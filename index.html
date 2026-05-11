@@ -161,7 +161,10 @@
   <div class="bg-slate-800 rounded-2xl p-6 w-full max-w-3xl border border-slate-600 relative">
     <button onclick="closeArchive()" class="absolute top-3 right-4 text-2xl text-slate-400 hover:text-white">✕</button>
     <h2 class="text-xl font-black text-amber-400 mb-4">📋 Report di Giornata</h2>
-    <button onclick="exportPDF()" class="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded font-bold text-sm mb-4">📄 Esporta Report Unico (PDF)</button>
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button onclick="exportPDF()" class="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded font-bold text-sm">📄 Esporta Report Unico (PDF)</button>
+      <button onclick="deleteSession()" class="bg-red-900 hover:bg-red-800 px-4 py-2 rounded font-bold text-sm border border-red-500">🗑️ Elimina Sessione (Cloud)</button>
+    </div>
     <div id="archiveContent"></div>
   </div>
 </div>
@@ -268,6 +271,25 @@ function setupFirebaseListeners() {
       renderArchive();
     }
   });
+
+  // Forza il caricamento iniziale immediato
+  window.dbGet(window.dbRef(db, `sessions/${sessionId}`)).then((snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      if (data.teamsDB) { teamsDB = data.teamsDB; populateTeamSelects(); }
+      if (data.savedMatches) { savedMatches = data.savedMatches; }
+    }
+  });
+}
+
+function deleteSession() {
+  if (!confirm("⚠️ Sei sicuro? Questo eliminerà definitivamente tutti i roster e le partite salvate in questa sessione dal Cloud.")) return;
+  if (db && sessionId) {
+    window.dbSet(window.dbRef(db, `sessions/${sessionId}`), null).then(() => {
+      alert("✅ Sessione eliminata. L'app verrà riavviata.");
+      location.reload();
+    });
+  }
 }
 
 // ===== INIT =====
@@ -547,7 +569,7 @@ function closeArchive() {
 
 function renderArchive() {
   const container = document.getElementById('archiveContent');
-  const matches = JSON.parse(localStorage.getItem('basketMatches') || '[]');
+  const matches = savedMatches; // Usa la variabile sincronizzata col cloud
   if (matches.length === 0) {
     container.innerHTML = '<p class="text-slate-400 text-center py-8">Nessuna partita salvata.</p>';
     return;
